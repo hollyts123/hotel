@@ -1,10 +1,12 @@
 package com.robot.hotel.domain;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.List;
 
 @Data
 @Builder
@@ -29,6 +31,14 @@ public class Guest {
     private String passportNumber;
 
     @ManyToOne
-    @JoinColumn(name="room_number")
+    @JoinColumn(name="room_id")
     private Room room;
+
+    @ManyToOne
+    @JoinColumn(name = "reservation_id")
+    @JsonBackReference
+    private Reservation reservation;
+
+    @ManyToMany(mappedBy = "guests")
+    private List<Reservation> reservations;
 }

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @RestController
@@ -23,43 +24,50 @@ public class RoomController {
     }
 
     @GetMapping("/rooms/{id}")
-    public ResponseEntity<Room> findById(@PathVariable Long id) {
+    public ResponseEntity<RoomDto> findById(@PathVariable Long id) {
         return roomService.findById(id)
-                .map(ResponseEntity::ok)
+                .map(room -> ResponseEntity.ok(RoomService.buildRoomDto(room)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/rooms/{roomNumber}")
-    public ResponseEntity<Room> findByRoomNumber(@PathVariable int roomNumber) {
+    @GetMapping("/rooms/number/{roomNumber}")
+    public ResponseEntity<RoomDto> findByRoomNumber(@PathVariable int roomNumber) {
         return roomService.findByRoomNumber(roomNumber)
-                .map(ResponseEntity::ok)
+                .map(room -> ResponseEntity.ok(RoomService.buildRoomDto(room)))
                 .orElse(ResponseEntity.notFound().build());
-
     }
 
     @GetMapping("/rooms/available")
-    public ResponseEntity<List<Room>> getAvailableRooms() {
-        List<Room> availableRooms = roomService.getAvailableRooms();
-        return ResponseEntity.ok(availableRooms);
+    public ResponseEntity<List<RoomDto>> getAvailableRooms() {
+        List<RoomDto> availableRoomDtos = roomService.getAvailableRooms().stream()
+                .map(RoomService::buildRoomDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(availableRoomDtos);
     }
 
     @GetMapping("/rooms/unavailable")
-    public ResponseEntity<List<Room>> getUnavailableRooms() {
-        List<Room> unavailableRooms = roomService.getUnavailableRooms();
-        return ResponseEntity.ok(unavailableRooms);
+    public ResponseEntity<List<RoomDto>> getUnavailableRooms() {
+        List<RoomDto> unavailableRoomDtos = roomService.getUnavailableRooms().stream()
+                .map(RoomService::buildRoomDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(unavailableRoomDtos);
     }
 
    @GetMapping("/rooms/findByType/{roomType}")
-   public ResponseEntity<List<Room>> getRoomsByType(@PathVariable String roomType) {
-       List<Room> rooms = roomService.findByRoomType(roomType);
-       return ResponseEntity.ok(rooms);
+   public ResponseEntity<List<RoomDto>> getRoomsByType(@PathVariable String roomType) {
+       List<RoomDto> roomDtos = roomService.findByRoomType(roomType).stream()
+               .map(RoomService::buildRoomDto)
+               .collect(Collectors.toList());
+       return ResponseEntity.ok(roomDtos);
    }
 
-   @GetMapping("/rooms/findByMaxNumber/{maxNumberOfGuests}")
-   public ResponseEntity<List<Room>> getRoomsByMaxNumberOfGuests(@PathVariable int maxNumberOfGuests) {
-        List<Room> rooms = roomService.findByMaxNumberOfGuests(maxNumberOfGuests);
-       return ResponseEntity.ok(rooms);
-   }
+    @GetMapping("/rooms/findByMaxNumber/{maxNumberOfGuests}")
+    public ResponseEntity<List<RoomDto>> getRoomsByMaxNumberOfGuests(@PathVariable int maxNumberOfGuests) {
+        List<RoomDto> roomDtos = roomService.findByMaxNumberOfGuests(maxNumberOfGuests).stream()
+                .map(RoomService::buildRoomDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(roomDtos);
+    }
 
     @PostMapping("/rooms")
     public ResponseEntity<Void> save(@RequestBody Room room) {
@@ -69,7 +77,7 @@ public class RoomController {
     }
 
     @PostMapping("rooms/{roomId}/guests")
-    public ResponseEntity<String> addGuestToRoom(@PathVariable Long roomId, @RequestBody Guest guest) {
+    public ResponseEntity<String> addNewGuestToRoom(@PathVariable Long roomId, @RequestBody Guest guest) {
         Optional<Room> room = roomService.findById(roomId);
         if (room.isPresent()) {
             roomService.addGuestToRoom(room, guest);
@@ -77,6 +85,12 @@ public class RoomController {
         } else {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @PostMapping("rooms/{roomId}/guests/addExisting")
+    public ResponseEntity<String> addExistingGuestsToRoom(@PathVariable Long roomId, @RequestParam List<Long> guestIds) {
+        roomService.addExistingGuestsToRoom(roomId, guestIds);
+        return ResponseEntity.ok("Existing guests added to room successfully");
     }
 
     @PutMapping("/rooms/{id}/roomNumber")

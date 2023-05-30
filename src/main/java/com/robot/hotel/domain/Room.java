@@ -1,10 +1,7 @@
 package com.robot.hotel.domain;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.List;
 
@@ -32,6 +29,9 @@ public class Room {
 
     @OneToMany(mappedBy = "room")
     private List<Guest> guests;
+
+    @OneToMany(mappedBy = "room")
+    private List<Reservation> reservations;
 
     public void setIsAvailable(boolean isAvailable) {
         this.isAvailable = isAvailable;

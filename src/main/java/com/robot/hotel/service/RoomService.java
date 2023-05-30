@@ -1,8 +1,8 @@
 package com.robot.hotel.service;
 
 import com.robot.hotel.domain.Guest;
+import com.robot.hotel.domain.Reservation;
 import com.robot.hotel.domain.Room;
-import com.robot.hotel.dto.GuestDto;
 import com.robot.hotel.dto.RoomDto;
 import com.robot.hotel.repository.GuestRepository;
 import com.robot.hotel.repository.RoomRepository;
@@ -11,6 +11,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -19,9 +20,6 @@ import java.util.stream.Collectors;
 @Transactional
 @RequiredArgsConstructor
 public class RoomService {
-    //    Цей інтерфейс повинен містити методи для додавання нових номерів,
-//    видалення, оновлення, отримання списку всіх номерів тощо. В цьому файлі
-//    повинні бути визначені усі правила і умови для роботи з об'єктами номерів.
     private final RoomRepository roomRepository;
     private final GuestRepository guestRepository;
 
@@ -66,6 +64,25 @@ public class RoomService {
         return roomRepository.findByMaxNumberOfGuests(maxNumberOfGuests);
     }
 
+
+    public boolean isRoomAvailable(Long roomId, LocalDate checkinDate, LocalDate checkoutDate) {
+        Optional<Room> optionalRoom = roomRepository.findById(roomId);
+        if (optionalRoom.isPresent()) {
+            Room room = optionalRoom.get();
+            List<Reservation> reservations = room.getReservations();
+            for (Reservation reservation : reservations) {
+                LocalDate existingCheckinDate = reservation.getCheckinDate();
+                LocalDate existingCheckoutDate = reservation.getCheckoutDate();
+                if (checkinDate.isBefore(existingCheckoutDate) && checkoutDate.isAfter(existingCheckinDate)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+
     public void saveRoom(Room room) {
         roomRepository.save(room);
     }
@@ -106,12 +123,31 @@ public class RoomService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("Room not found"));
         room.setIsAvailable(isAvailable);
-
         roomRepository.save(room);
     }
 
     public void addGuestToRoom(Optional<Room> room, Guest guest) {
-        room.ifPresent(r -> r.getGuests().add(guest));
+        room.ifPresent(r -> {
+            guest.setRoom(r);
+            guestRepository.save(guest);
+            roomRepository.save(r);
+            r.getGuests().add(guest);
+        });
+    }
+
+    public void addExistingGuestsToRoom(Long roomId, List<Long> guestIds) {
+        Optional<Room> room = roomRepository.findById(roomId);
+        if (room.isPresent()) {
+            List<Guest> guests = guestRepository.findAllById(guestIds);
+            guests.forEach(guest -> {
+                guest.setRoom(room.get());
+                guestRepository.save(guest);
+                room.get().getGuests().add(guest);
+            });
+            roomRepository.save(room.get());
+        } else {
+            throw new EntityNotFoundException("Room not found");
+        }
     }
 
     public void deleteRoom(Long id) {
@@ -119,4 +155,6 @@ public class RoomService {
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
         roomRepository.delete(roomToDelete);
     }
+
+
 }

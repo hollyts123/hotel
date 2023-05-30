@@ -2,6 +2,7 @@ package com.robot.hotel.rest;
 
 import com.robot.hotel.domain.Guest;
 import com.robot.hotel.dto.GuestDto;
+import com.robot.hotel.repository.GuestRepository;
 import com.robot.hotel.service.GuestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -9,11 +10,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @RestController
 public class GuestController {
     private final GuestService guestService;
+    private final GuestRepository guestRepository;
 
     @GetMapping("/guests")
     public ResponseEntity<List<GuestDto>> findAll() {
@@ -21,23 +24,34 @@ public class GuestController {
     }
 
     @GetMapping("/guests/{id}")
-    public ResponseEntity<Guest> findById(@PathVariable Long id) {
+    public ResponseEntity<GuestDto> findById(@PathVariable Long id) {
         return guestService.findById(id)
-                .map(ResponseEntity::ok)
+                .map(guest -> ResponseEntity.ok(GuestService.buildGuestDto(guest)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/guests/name/{lastName}")
-    public ResponseEntity<Guest> findByLastName(@PathVariable String lastName) {
+    @GetMapping("/guests/findGuestsByIds/{guestIds}")
+    public ResponseEntity<List<GuestDto>> findGuestsByIds(@PathVariable List<Long> guestIds) {
+        List<GuestDto> guests = guestService.findGuestsByIds(guestIds).stream()
+                .map(GuestService::buildGuestDto)
+                .collect(Collectors.toList());
+        if (guests.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(guests);
+    }
+
+    @GetMapping("/guests/findByLastName/{lastName}")
+    public ResponseEntity<GuestDto> findByLastName(@PathVariable String lastName) {
         return guestService.findByLastName(lastName)
-                .map(ResponseEntity::ok)
+                .map(guest -> ResponseEntity.ok(GuestService.buildGuestDto(guest)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/guests/name/{passportNumber}")
-    public ResponseEntity<Guest> findByPassportNumber(@PathVariable String passportNumber) {
+    @GetMapping("/guests/findByPassportNumber/{passportNumber}")
+    public ResponseEntity<GuestDto> findByPassportNumber(@PathVariable String passportNumber) {
         return guestService.findByPassportNumber(passportNumber)
-                .map(ResponseEntity::ok)
+                .map(guest -> ResponseEntity.ok(GuestService.buildGuestDto(guest)))
                 .orElse(ResponseEntity.notFound().build());
     }
 

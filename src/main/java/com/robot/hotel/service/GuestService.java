@@ -9,7 +9,6 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 import java.util.Optional;
@@ -46,6 +45,10 @@ public class GuestService {
 
     public Optional<Guest> findById(Long id) {
         return guestRepository.findById(id);
+    }
+
+    public List<Guest> findGuestsByIds(List<Long> guestIds) {
+        return guestRepository.findAllById(guestIds);
     }
 
     public Optional<Guest> findByLastName(String lastName) {
