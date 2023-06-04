@@ -12,7 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.swing.text.html.Option;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -78,9 +77,42 @@ public class ReservationController {
         Optional<Reservation> reservation = reservationService.findById(reservationId);
         if(reservation.isPresent()) {
             reservationService.addGuestsToReservation(reservationId, guestIds);
-            return ResponseEntity.ok("Guest successfully added to the reservation");
+            return ResponseEntity.ok("Guests successfully added to the reservation");
         } else {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @PostMapping("/reservations/{reservationId}/deleteGuests/{guestIds}")
+    public ResponseEntity<String> removeGuestsFromReservation(@PathVariable("reservationId") Long reservationId, @PathVariable List<Long> guestIds) {
+        List<Guest> guests = guestRepository.findAllById(guestIds);
+        if (guests.isEmpty()) {
+            return ResponseEntity.badRequest().body("Invalid guest IDs");
+        }
+
+        Optional<Reservation> reservation = reservationService.findById(reservationId);
+        if(reservation.isPresent()) {
+            reservationService.removeGuestsFromReservation(reservationId, guestIds);
+            return ResponseEntity.ok("Guests successfully removed from the reservation");
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PostMapping("/reservations/moveGuest")
+    public ResponseEntity<String> moveGuestToRoom(@RequestParam("guestId") Long guestId, @RequestParam("currentRoomId") Long currentRoomId, @RequestParam("newRoomId") Long newRoomId) {
+        try {
+            reservationService.moveGuestToRoom(guestId, currentRoomId, newRoomId);
+            return ResponseEntity.ok("Guest successfully moved to the new room");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/reservations/{reservationId}")
+    public void deleteReservation(@PathVariable Long reservationId) {
+        reservationService.deleteReservation(reservationId);
     }
 }

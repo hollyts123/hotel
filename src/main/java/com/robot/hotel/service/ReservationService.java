@@ -9,6 +9,7 @@ import com.robot.hotel.dto.RoomDto;
 import com.robot.hotel.repository.GuestRepository;
 import com.robot.hotel.repository.ReservationRepository;
 import com.robot.hotel.repository.RoomRepository;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -74,7 +75,9 @@ public class ReservationService {
         Room room = getRoomById(roomId);
         checkRoomAvailability(room);
         checkNumberOfGuests(room, guests);
-        checkRoomAvailabilityForDates(room, reservation.getCheckinDate(), reservation.getCheckoutDate());
+        if (!guests.isEmpty()) {
+            checkRoomAvailabilityForDates(room, reservation.getCheckinDate(), reservation.getCheckoutDate());
+        }
 
         configureReservation(reservation, room, guests);
         updateRoomAvailability(room);
@@ -128,7 +131,7 @@ public class ReservationService {
         if (optionalReservation.isPresent()) {
             Reservation reservation = optionalReservation.get();
 
-            if (reservation.getStatus() == "Completed") {
+            if (reservation.getStatus().equals("Completed")) {
                 throw new IllegalStateException("Cannot add guests to a completed reservation.");
             }
 
@@ -152,6 +155,81 @@ public class ReservationService {
         } else {
             throw new IllegalArgumentException("Invalid reservation ID: " + reservationId);
         }
+    }
+
+    public void removeGuestsFromReservation(Long reservationId, List<Long> guestIds) {
+        Optional<Reservation> optionalReservation = reservationRepository.findById(reservationId);
+        if (optionalReservation.isPresent()) {
+            Reservation reservation = optionalReservation.get();
+
+            List<Guest> guestsToRemove = guestRepository.findAllById(guestIds);
+            List<Guest> currentGuests = reservation.getGuests();
+
+            currentGuests.removeAll(guestsToRemove);
+            for (Guest guest : guestsToRemove) {
+                guest.setRoom(null);
+                guest.setReservation(null);
+            }
+            guestRepository.saveAll(guestsToRemove);
+
+            Room room = reservation.getRoom();
+            int currentNumberOfGuests = currentGuests.size();
+            if(currentNumberOfGuests == 0) {
+                room.setIsAvailable(true);
+                deleteReservation(reservationId);
+            }
+            roomRepository.save(room);
+        } else {
+            throw new IllegalArgumentException("Invalid reservation ID: " + reservationId);
+        }
+    }
+
+    public void moveGuestToRoom(Long guestId, Long currentRoomId, Long newRoomId) {
+        Guest guest = guestRepository.findById(guestId)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid guest ID: " + guestId));
+
+        Room currentRoom = roomRepository.findById(currentRoomId)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid current room ID: " + currentRoomId));
+
+        Room newRoom = roomRepository.findById(newRoomId)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid new room ID: " + newRoomId));
+
+        Reservation reservation = guest.getReservation();
+
+        if (reservation == null) {
+            throw new IllegalStateException("No existing reservations found for this guest");
+        }
+
+        if (!currentRoom.equals(reservation.getRoom())) {
+            throw new IllegalStateException("Guest is not staying in the current room");
+        }
+
+        if (newRoom.getGuests().size() == newRoom.getMaxNumberOfGuests()) {
+            throw new IllegalStateException("The number of guests in the room already reached the maximum");
+        }
+
+        if (newRoom.getMaxNumberOfGuests() <= reservation.getGuests().size()) {
+            throw new IllegalStateException("The number of guests exceeds the room capacity");
+        }
+
+        guest.setRoom(newRoom);
+        guestRepository.save(guest);
+
+        reservation.setRoom(newRoom);
+        reservationRepository.save(reservation);
+
+        if(currentRoom.getGuests().size() == 0) {
+            currentRoom.setIsAvailable(true);
+        }
+        newRoom.setIsAvailable(false);
+        roomRepository.saveAll(List.of(currentRoom, newRoom));
+    }
+
+    public void deleteReservation(Long id) {
+        Reservation reservationToDelete = reservationRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+        reservationRepository.delete(reservationToDelete);
+
     }
 }
 
