@@ -128,8 +128,8 @@ public class ReservationService {
         if (optionalReservation.isPresent()) {
             Reservation reservation = optionalReservation.get();
 
-            if (reservation.getStatus() != "Reserved") {
-                throw new IllegalStateException("Cannot add guests to a completed or canceled reservation.");
+            if (reservation.getStatus() == "Completed") {
+                throw new IllegalStateException("Cannot add guests to a completed reservation.");
             }
 
             List<Guest> guests = guestRepository.findAllById(guestIds);
@@ -154,4 +154,5 @@ public class ReservationService {
         }
     }
 }
+
 

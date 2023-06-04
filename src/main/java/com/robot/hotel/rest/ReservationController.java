@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.swing.text.html.Option;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -65,5 +66,21 @@ public class ReservationController {
         }
 
         return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @PostMapping("/reservations/{reservationId}/guests/{guestIds}")
+    public ResponseEntity<String> addGuestsToReservation(@PathVariable("reservationId") Long reservationId, @PathVariable List<Long> guestIds) {
+        List<Guest> guests = guestRepository.findAllById(guestIds);
+        if (guests.isEmpty()) {
+            return ResponseEntity.badRequest().body("Invalid guest IDs");
+        }
+
+        Optional<Reservation> reservation = reservationService.findById(reservationId);
+        if(reservation.isPresent()) {
+            reservationService.addGuestsToReservation(reservationId, guestIds);
+            return ResponseEntity.ok("Guest successfully added to the reservation");
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 }
